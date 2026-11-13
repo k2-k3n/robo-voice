@@ -1,0 +1,12 @@
+{
+  "name": "Robo Voice Engine",
+  "id": "org.resona.creative.robo-voice.voice",
+  "version": "1.0.0",
+  "api": 1,
+  "description": "Robo Voice Engine: a one-note vocoder voice with pick-triggered vowels, metallic ring and speech-chip crush.",
+  "sources": [
+    "src/dsp.cpp",
+    "src/ui.cpp",
+    "src/main.cpp"
+  ]
+}

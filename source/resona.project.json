@@ -1,0 +1,11 @@
+{
+  "name": "Robo Voice",
+  "id": "org.resona.creative.robo-voice",
+  "version": "1.1.2",
+  "api": 1,
+  "description": "A robot repeats whatever you play in its one-note robot voice: pick its note, make it talk, chrome it, crush it.",
+  "kind": "app",
+  "sources": [
+    "src/app.cpp"
+  ]
+}
