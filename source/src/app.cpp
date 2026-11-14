@@ -43,7 +43,10 @@ struct State {
     kit::Levels lv;
     kit::Saver saver;
     Saved s;
-    uint32_t ms, idle, blink_at, seed, touched_at, nod_at, zap_at, said_at;
+    uint32_t ms, idle, blink_at, next_blink, seed, touched_at, nod_at, zap_at, said_at;
+    uint32_t last_draw;
+    float voice[48];
+    unsigned voice_head, voice_ms;
     int touched, vowel;      // touched: 2 = METAL (its value shows on the chest for a moment)
     float pulse;             // a knob touch makes it speak, as a pick does
     float sleep;             // 0 awake .. 1 low power
@@ -135,48 +138,57 @@ void draw(State *st)
         }
     }
 
-    // Cyan marks stay inside the original glass and react to picks, blinking and CRUSH.
+    const uint16_t teal = kit::rgb(12, 124, 140);
     const int eye_centers[] = {137, 180};
     for (int cx : eye_centers) {
-        const int cy = 69 + (since_nod < 110u ? 2 : 0);
-        if (asleep || (since_blink >= 70u && since_blink < 140u)) {
-            c.rect(cx - 5, cy, 11, 1, kit::mix(0, cyan, asleep ? 0.25f : 0.7f));
-        } else if (startled) {
-            c.ring(cx, cy - 3, 6, 6, cyan);
-            c.circle(cx, cy - 3, 2, cyan);
-        } else {
-            const int height = since_blink < 200u ? 2 : (energy > 0.3f ? 6 : 4);
-            const int step = 1 + crush;
-            for (int x = -7; x <= 7; x += step) {
-                const int arc = height * (49 - x * x) / 49;
-                c.rect(cx + x, cy - arc, step, step > 1 ? step : 2, cyan);
+        const int cy = 69 + (since_nod < 110u ? 1 : 0);
+        const bool blink = since_blink < 120u;
+        const float open = blink ? kit::clampf(resona_fabsf((float)since_blink - 58.0f) / 58.0f, 0, 1) : 1.0f;
+        const unsigned crush_step = crush == 2 ? 2 : 1;
+        const uint16_t eye = kit::mix(teal, cyan, 0.44f + energy * 0.56f);
+        for (int x = -8; x <= 8; x += (int)crush_step) {
+            const int arch = (int)((1.0f - x * x / 64.0f) * open * (3.5f + energy * 3.0f));
+            const int y = cy - (asleep ? 0 : arch);
+            c.rect(cx + x, y, (int)crush_step, 1, asleep ? kit::mix(0, teal, 0.40f) : eye);
+            if (!asleep && !blink) {
+                c.put(cx + x, y + 1, kit::mix(0, eye, 0.52f));
+                c.put(cx + x, y - 1, kit::mix(0, teal, 0.45f + energy * 0.45f));
             }
         }
+        if (!asleep && startled && since_zap < 140u)
+            c.ring(cx, cy - 4, 9, 8, kit::mix(teal, cyan, 1.0f - since_zap / 140.0f));
     }
 
+    // Use the same meter envelope for the bar, with a short taper to either side.
     for (int k = 0; k < 10; ++k) {
-        if (asleep && (k != 4 || ((st->ms / 900u) & 1u) == 0u)) continue;
-        const float syllable = (float)(hash(st->ms / 75u * 31u + (uint32_t)k * 7919u) & 255u) / 255.0f;
-        const int h = !talk_now(st) ? 1 + (energy > 0.55f)
-            : kit::clampi((int)(1.0f + energy * (2.0f + 3.0f * syllable)), 1, 5);
-        c.rect(134 + k * 5, 95 - h, 3, h * 2, asleep ? kit::mix(0, green, 0.4f) : (h > 3 ? amber : green));
+        const int distance = k < 5 ? 4 - k : k - 5;
+        const float fill = asleep ? 0.0f : kit::clampf(energy * (talk_now(st) ? 1.42f : 1.15f) - distance * .105f, 0, 1);
+        const int height = 1 + (int)(fill * 5.0f);
+        const int x = 134 + k * 5;
+        c.rect(x, 90, 3, 11, kit::rgb(7, 38, 24));
+        const uint16_t lit = kit::mix(kit::mix(0, green, 0.4f), amber, kit::clampf((fill - .7f) * 3.3f, 0, 1));
+        c.rect(x, 95 - height / 2, 3, height, fill > .02f ? lit : kit::rgb(13, 53, 29));
+        if (fill > .18f) c.rect(x, 95 - height / 2, 2, 1, kit::mix(lit, green, .6f));
     }
 
+    const int halo = 4 + (int)(energy * 2.0f);
+    const uint16_t warm = kit::rgb(255, 149, 33);
     if (!asleep) {
-        c.circle(158, 15, 3, kit::mix(kit::rgb(255, 149, 33), kit::rgb(255, 238, 150), energy));
-        if (startled && (since_zap / 80u) % 2u == 0u) {
-            c.line(149, 13, 145, 9, amber);
-            c.line(166, 12, 171, 8, amber);
-        }
+        if (energy > .08f) c.ring(158, 15, halo, halo, kit::mix(0, warm, energy * .58f));
+        c.circle(158, 15, 3, kit::mix(warm, kit::rgb(255, 238, 150), energy));
+        c.put(157, 14, kit::rgb(255, 245, 197));
     }
 
-    // The oscilloscope follows the input level.
-    const float amp = asleep ? 0.0f : 1.5f + energy * 8.5f;
-    const float t = (float)(st->ms % 6283u) * 0.012f;
-    int prev = 73;
-    for (int x = 0; x < 50; ++x) {
-        const int y = 73 + (int)(amp * resona_sinf(x * 0.5f + t * 3.0f) * resona_sinf(x * 0.13f + 1.0f + t));
-        c.line(248 + x, prev, 249 + x, y, kit::mix(0, green, asleep ? 0.3f : 0.85f));
+    // The scope plots recent output levels. Its centre line remains visible at rest.
+    const uint16_t grid = kit::rgb(13, 48, 36);
+    for (int x = 251; x <= 295; x += 11) c.line(x, 63, x, 83, grid);
+    for (int y = 64; y <= 82; y += 6) c.line(249, y, 298, y, grid);
+    int prev = 80;
+    for (unsigned x = 0; x < 48; ++x) {
+        const float sample = st->voice[(st->voice_head + x) % 48];
+        const int y = 80 - (int)(14.0f * sample + .5f);
+        c.line(250 + (int)x, prev + 1, 251 + (int)x, y + 1, kit::mix(0, green, .25f));
+        c.line(250 + (int)x, prev, 251 + (int)x, y, kit::mix(0, green, asleep ? .23f : .75f));
         prev = y;
     }
 
@@ -187,23 +199,39 @@ void draw(State *st)
         c.rect(169, 137, 2, 4, kit::mix(0, green, 0.5f));
     } else if (st->touched == 2 && st->ms - st->touched_at < 1100u) {
         P->format(value, sizeof value, "%d", metal_now(st));
-        c.text(159 - c.text_w(2, value) / 2, 132, 2, amber, value);
+        const int x = 159 - c.text_w(2, value) / 2;
+        c.text(x + 1, 133, 2, kit::mix(0, amber, .26f), value);
+        c.text(x, 132, 2, amber, value);
     } else {
         const int note = note_now(st);
         P->format(value, sizeof value, "%s%d", kNoteName[note % 12], 2 + note / 12);
-        c.text(159 - c.text_w(2, value) / 2, 132, 2, green, value);
+        const int x = 159 - c.text_w(2, value) / 2;
+        c.text(x + 1, 133, 2, kit::mix(0, green, .26f), value);
+        c.text(x, 132, 2, green, value);
     }
 
-    if (!asleep && talk_now(st) && st->ms - st->said_at < 480u) {
+    const uint32_t bubble_age = st->ms - st->said_at;
+    if (!asleep && talk_now(st) && bubble_age < 480u) {
         static const char *const vowels[5] = {"A", "E", "I", "O", "U"};
-        const int y = st->ms - st->said_at < 70u ? 35 : 33;
-        const uint16_t cream = kit::rgb(255, 227, 179);
-        c.ellipse(225, y + 4, 11, 11, cream);
-        c.tri(216, y + 9, 223, y + 13, 215, y + 17, cream);
-        c.text(220, y - 3, 2, kit::rgb(20, 23, 28), vowels[st->vowel]);
+        const float enter = kit::clampf(bubble_age / 95.0f, 0, 1);
+        const float exit = kit::clampf((480u - bubble_age) / 115.0f, 0, 1);
+        const float appear = (1.0f - (1.0f - enter) * (1.0f - enter)) * exit;
+        const int y = 36 - (int)(4.0f * enter);
+        const int rx = 5 + (int)(7.0f * appear);
+        const int ry = 5 + (int)(5.0f * appear);
+        const uint16_t cream = kit::mix(kit::rgb(27, 40, 47), kit::rgb(251, 219, 172), appear);
+        c.ellipse(226, y + 6, rx, ry, kit::rgb(12, 21, 30));
+        c.ellipse(224, y + 4, rx, ry, cream);
+        if (appear > .40f) {
+            c.tri(217, y + 7, 222, y + 11, 215, y + 15, cream);
+            c.text(224 - c.text_w(2, vowels[st->vowel]) / 2, y - 3, 2,
+                   kit::rgb(34, 34, 38), vowels[st->vowel]);
+        }
     }
 
+#if !defined(RESONA_LAB_HOST)
     c.banner(kit::audio_message(st->audio, "INSTALL ROBO VOICE ENGINE IN LAB"), kit::rgb(22, 14, 34), green);
+#endif
     c.present(P);
 }
 
@@ -229,6 +257,7 @@ int init(void *state, const resona_platform *platform)
     st->seed = 0xB07B07u;
     st->zap_at = st->nod_at = st->said_at = st->touched_at = 0u - 100000u;   // long ago
     st->blink_at = 0u - 1000u;
+    st->next_blink = 3100u;
     push(st);
     return 0;
 }
@@ -289,15 +318,28 @@ void frame(void *state, uint32_t ms)
     kit::save_tick(P, st->saver, st->s, st->ms);
     ctl::sync(P, st->link, kBind, kBinds, st->ms);
     if (st->lv.raw_in >= 2) st->idle = 0; else st->idle += ms;
-    if (st->lv.hit > 0.95f) {
-        if (st->ms - st->said_at > 120u) say(st);
+    if (st->lv.raw_in >= 2 && st->ms - st->said_at > 125u &&
+        (st->lv.hit > 0.85f || st->ms - st->said_at > 320u)) {
+        say(st);
         if (st->lv.raw_in >= 8 && st->ms - st->zap_at > 1500u) st->zap_at = st->ms;   // a really hard pick
     }
     st->pulse *= resona_expf(-(float)ms / 320.0f);
     const float target = st->idle > 9000u ? 1.0f : 0.0f;
     st->sleep += kit::clampf(target - st->sleep, -(float)ms / 250.0f, (float)ms / 1400.0f);
-    if (st->ms - st->blink_at > 2600u + (rnd(st) % 3000u)) st->blink_at = st->ms;
-    draw(st);
+    if ((int32_t)(st->ms - st->next_blink) >= 0) {
+        st->blink_at = st->ms;
+        st->next_blink = st->ms + 2600u + rnd(st) % 3000u;
+    }
+    st->voice_ms += ms;
+    if (st->voice_ms >= 32u) {
+        st->voice_ms %= 32u;
+        st->voice[st->voice_head] = kit::clampf(st->lv.raw_out / 9.0f, 0, 1);
+        st->voice_head = (st->voice_head + 1) % 48;
+    }
+    if (!st->last_draw || st->ms - st->last_draw >= 24u) {
+        st->last_draw = st->ms;
+        draw(st);
+    }
 }
 
 const resona_app kApp = {

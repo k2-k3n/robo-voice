@@ -63,7 +63,7 @@ them (SHOUT wins over HISS).
 - Mouth LEDs and the antenna bulb follow your playing; with TALK on a vowel pops up on each pick,
   with TALK off the mouth is one humming line.
 - A very hard pick startles it: wide eyes, sparks from the antenna.
-- The oscilloscope trace follows the input level. The gears and fan are part of the workshop artwork.
+- The scope plots recent output levels. The gears and fan are part of the workshop artwork.
 - After 9 s of silence it goes to low power: the room darkens, eyes show "- -", the chest shows a
   flat battery.
 - Chest display: the note name and octave; METAL's amount while that knob turns.
@@ -106,4 +106,5 @@ sets each of them, and LEVEL.
 
 ## Changes
 
+- 1.1.4 — Refined the eye lights, mouth meter, output trace and TALK bubbles.
 - 1.1.3 — New workshop artwork, live robot displays and a matching startup animation.
