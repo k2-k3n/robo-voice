@@ -5,11 +5,11 @@
     "file": "App.rpk",
     "id": "org.resona.creative.robo-voice",
     "name": "Robo Voice",
-    "version": "1.1.2",
+    "version": "1.1.3",
     "kind": 1,
-    "bytes": 170256,
-    "sha256": "aac4aebd338a7aa0e59ee4d67873470af857f148f2bf6a6cce0e21f770333056",
-    "crc32": 2281623190
+    "bytes": 124956,
+    "sha256": "c98139cc8ebc31558bf63aaeea0535c4c7f776a70eae0b9e88b6189575943b17",
+    "crc32": 3836643318
   },
   "audio_packs": [
     {

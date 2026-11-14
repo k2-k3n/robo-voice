@@ -27,9 +27,9 @@ you pick, they come out on the robot's one note, spoken in vowels.
 
 | Control | Action | What it does |
 | --- | --- | --- |
-| SELECTOR | turn | NOTE: the robot's one note, C2 .. C4 (shown on its chest; it nods and hums the new note) |
+| SELECTOR | turn | NOTE: the robot's one note, C2 .. C4 (shown on its chest; its eyes move and it hums the new note) |
 | SELECTOR | click | TALK on/off: vowels that change on every pick, or a plain buzz |
-| CUSTOMIZE | turn | METAL: metallic ring amount (painted, then steel, then chrome) |
+| CUSTOMIZE | turn | METAL: metallic ring amount, shown briefly on its chest |
 | CUSTOMIZE | click | CRUSH: off / lo-fi / toy speech chip (its eyes get chunkier) |
 | CUSTOMIZE | long press | reset |
 
@@ -63,7 +63,7 @@ them (SHOUT wins over HISS).
 - Mouth LEDs and the antenna bulb follow your playing; with TALK on a vowel pops up on each pick,
   with TALK off the mouth is one humming line.
 - A very hard pick startles it: wide eyes, sparks from the antenna.
-- Gears, the fan, the rack's lamps and its scope trace speed up with the playing.
+- The oscilloscope trace follows the input level. The gears and fan are part of the workshop artwork.
 - After 9 s of silence it goes to low power: the room darkens, eyes show "- -", the chest shows a
   flat battery.
 - Chest display: the note name and octave; METAL's amount while that knob turns.
@@ -97,9 +97,13 @@ sets each of them, and LEVEL.
 
     resona-lab build dsp            # checks the pack
     resona-lab pack build dsp
+    python3 tools/encode_workshop.py  # requires Pillow
     resona-lab app build .
-    python3 ../_art/robo_art.py     # re-bake src/art.h
 
 ## 开机动画
 
-金色机器人亮起天线、睁开眼睛，嘴部电平随之点亮。 首次运行时保存到 Resona Box，下次开机播放。
+新版工作台换上了拉丝金属机器人。拨弦时眼睛和嘴部电平会动，打开 TALK 还会冒出元音气泡。开机时天线、眼睛和嘴部依次点亮，工作台随后渐亮。
+
+## Changes
+
+- 1.1.3 — New workshop artwork, live robot displays and a matching startup animation.
